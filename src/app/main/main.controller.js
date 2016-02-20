@@ -9,6 +9,9 @@
     /** @ngInject */
     function MainController($timeout, $log, toastr, $scope, appSettings) {
         var vm = this;
+        var idToken;
+        var userEmail;
+
         vm.reportMood = reportMood;
 
         activate();
@@ -17,13 +20,17 @@
             vm.moods = getMoods();
             $scope.$on('event:google-plus-signin-success', function (event,authResult) {
                 console.log("Success",authResult);
-                var id_token = authResult.getAuthResponse().id_token;
-                console.log("Token: ",id_token);
+                idToken = authResult.getAuthResponse().id_token;
+                console.log("Token: ",idToken);
+                userEmail = authResult.getBasicProfile().getEmail();
+                console.log("Email: ",userEmail);
 
             });
             $scope.$on('event:google-plus-signin-failure', function (event,authResult) {
                 console.log("Failed",authResult);
             });
+
+            $log.log("Settings",appSettings);
         }
 
         function getMoods() {
@@ -37,10 +44,22 @@
         function reportMood(mood) {
             // Initialize the Amazon Cognito credentials provider
             AWS.config.region = appSettings.cognito.region;
+
             AWS.config.credentials = new AWS.CognitoIdentityCredentials({
-                IdentityPoolId: appSettings.cognito.identityPoolId
+                IdentityPoolId: appSettings.cognito.identityPoolId,
+                AccountId: appSettings.aws.accountId,
+                RoleArn: appSettings.cognito.authenticatedRoleARN,
+                Logins: {
+                    'accounts.google.com': idToken
+                },
+                LoginId: userEmail
             });
-            console.log(AWS.config);
+            $log.log("Credentials",AWS.config.credentials);
+
+            AWS.config.credentials.get(function(err) {
+                $log.log("Credential Error",err);
+            });
+            
 
             toastr.clear();
             $log.log("Mood is",mood.title);
