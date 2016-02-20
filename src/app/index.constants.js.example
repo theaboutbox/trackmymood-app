@@ -1,0 +1,19 @@
+/* global  moment:false */
+(function() {
+    'use strict';
+
+    angular
+        .module('app')
+        .constant('appSettings', appSettings);
+
+    var appSettings = {
+        'cognito': {
+            region: 'us-east-1',
+            identityPoolId: 'COGNITO-IDENTITY-POOL-ID'
+        },
+        'googleAuth': {
+            clientId: 'GOOGLE-AUTH-CLIENT-ID'
+        }
+    };
+
+})();

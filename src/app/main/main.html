@@ -1,0 +1,33 @@
+<div class="container">
+  <nav class="navbar navbar-inverse">
+    <a class="navbar-brand" href="#">TrackMyMood</a>
+  </nav>
+
+  <div class="jumbotron text-center">
+    <h1>Track my mood</h1>
+    <p class="lead">
+      Let Big Brother know how you're feeling
+    </p>
+    <p class="small">We're here to help</p>
+  </div>
+
+  <div class="row">
+    <div class="col-sm-12 col-md-12" style="padding-bottom: 1em;">
+      <h3>How are you feeling?</h3>
+      <h4>(Tell the truth!)</h4>
+      <google-plus-signin clientid="388582266788-141frto0ape05ofb8k8582noe495dpc4"></google-plus-signin>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-sm-6 col-md-4" ng-repeat="mood in main.moods">
+      <a class="thumbnail" style="height: 400px;" ng-click="main.reportMood(mood)">
+        <img ng-src="assets/images/{{mood.image}}" alt="{{ mood.title }}">
+        <div class="caption">
+          <h3>{{ mood.title }}</h3>
+          <p>{{ mood.description }}</p>
+        </div>
+      </a>
+    </div>
+  </div>
+
+</div>
