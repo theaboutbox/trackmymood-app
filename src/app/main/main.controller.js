@@ -13,6 +13,9 @@
         var userEmail;
 
         vm.reportMood = reportMood;
+        vm.signOut = signOut;
+        vm.recentMoods = [];
+        $scope.userEmail = "";
 
         activate();
 
@@ -24,6 +27,9 @@
                 console.log("Token: ",idToken);
                 userEmail = authResult.getBasicProfile().getEmail();
                 console.log("Email: ",userEmail);
+                $scope.userEmail = userEmail;
+                queryMoods();
+                $scope.$apply();
 
             });
             $scope.$on('event:google-plus-signin-failure', function (event,authResult) {
@@ -31,6 +37,16 @@
             });
 
             $log.log("Settings",appSettings);
+        }
+
+        function signOut() {
+            var auth2 = gapi.auth2.getAuthInstance();
+            auth2.signOut().then(function () {
+                console.log('User signed out.');
+            });
+            $scope.userEmail = "";
+            vm.recentMoods = [];
+            //$scope.$apply();
         }
 
         function getMoods() {
@@ -46,6 +62,7 @@
                     'event: createEvent(username:"'+userEmail+'", mood:"'+mood.title+'") {' +
                     'username,mood,created } }';
             $log.log("insertStatement",insert);
+            vm.recentMoods.unshift({username:userEmail,mood:mood.title,created:Math.floor(new Date().getTime()/1000)})
             getApiClient().
                 then(function(client) {
                     client.resourceGraphqlPost({},insert,{}).
@@ -70,11 +87,14 @@
             var endTime = Math.floor(new Date().getTime() / 1000);
             var startTime = endTime - 3600 * 24 * 7;
             var query = '{ events(username: "' + userEmail + '", start:'+ startTime +', end:'+ endTime + ') { username, mood, created }}';
-            getApiClient().
+            return getApiClient().
                 then(function(client) {
                     client.resourceGraphqlPost({},query,{}).
                         then(function(result) {
                             $log.log(result);
+                            vm.recentMoods = result.data.data.events;
+                            $scope.$apply();
+                            return result.data.data.events;
                         }).
                         catch(function(err) {
                             $log.log(err);
