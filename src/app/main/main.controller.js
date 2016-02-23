@@ -7,7 +7,7 @@
         .controller('MainController', MainController);
 
     /** @ngInject */
-    function MainController($timeout, $log, toastr, $scope, appSettings) {
+    function MainController($q, $timeout, $log, toastr, $scope, appSettings) {
         var vm = this;
         var idToken;
         var userEmail;
@@ -42,24 +42,23 @@
         }
 
         function reportMood(mood) {
-            // Initialize the Amazon Cognito credentials provider
-            AWS.config.region = appSettings.cognito.region;
-
-            AWS.config.credentials = new AWS.CognitoIdentityCredentials({
-                IdentityPoolId: appSettings.cognito.identityPoolId,
-                AccountId: appSettings.aws.accountId,
-                RoleArn: appSettings.cognito.authenticatedRoleARN,
-                Logins: {
-                    'accounts.google.com': idToken
-                },
-                LoginId: userEmail
-            });
-            $log.log("Credentials",AWS.config.credentials);
-
-            AWS.config.credentials.get(function(err) {
-                $log.log("Credential Error",err);
-            });
-            
+            var insert = 'mutation newEvent { ' +
+                    'event: createEvent(username:"'+userEmail+'", mood:"'+mood.title+'") {' +
+                    'username,mood,created } }';
+            $log.log("insertStatement",insert);
+            getApiClient().
+                then(function(client) {
+                    client.resourceGraphqlPost({},insert,{}).
+                        then(function(result) {
+                            $log.log("Insert",result);
+                        }).
+                        catch(function(err) {
+                            $log.log(err);
+                        });
+                }).
+                catch(function(error) {
+                    $log.log("Uh oh",error);
+                });
 
             toastr.clear();
             $log.log("Mood is",mood.title);
@@ -67,5 +66,49 @@
             toastr.success("Thank you for telling us how you feel","Big Brother Says");
         }
 
+        function queryMoods() {
+            var endTime = Math.floor(new Date().getTime() / 1000);
+            var startTime = endTime - 3600 * 24 * 7;
+            var query = '{ events(username: "' + userEmail + '", start:'+ startTime +', end:'+ endTime + ') { username, mood, created }}';
+            getApiClient().
+                then(function(client) {
+                    client.resourceGraphqlPost({},query,{}).
+                        then(function(result) {
+                            $log.log(result);
+                        }).
+                        catch(function(err) {
+                            $log.log(err);
+                        });
+                }).
+                catch(function(error) {
+                    $log.log("Uh oh",error);
+                });
+        }
+
+        function getApiClient() {
+            return $q(function(resolve,reject) {
+                // Initialize the Amazon Cognito credentials provider
+                AWS.config.region = appSettings.cognito.region;
+                AWS.config.credentials = new AWS.CognitoIdentityCredentials({
+                    IdentityPoolId: appSettings.cognito.identityPoolId,
+                    AccountId: appSettings.aws.accountId,
+                    RoleArn: appSettings.cognito.authenticatedRoleARN,
+                    Logins: {
+                        'accounts.google.com': idToken
+                    },
+                    LoginId: userEmail
+                });
+
+                AWS.config.credentials.get(function(err) {
+                    var client = apigClientFactory.newClient({
+                        accessKey: AWS.config.credentials.accessKeyId,
+                        secretKey: AWS.config.credentials.secretAccessKey,
+                        sessionToken: AWS.config.credentials.sessionToken
+                    });
+                    if (err) reject(err);
+                    else resolve(client);
+                });
+            });
+        }
     }
 })();
